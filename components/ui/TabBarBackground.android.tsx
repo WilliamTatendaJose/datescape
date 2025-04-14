@@ -1,23 +1,18 @@
-import { BlurView } from 'expo-blur';
 import { StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabBarBackground() {
-  const insets = useSafeAreaInsets();
-  
   return (
-    <BlurView
-      intensity={80}
-      tint="light"
+    <View 
       style={[
         styles.container,
-        {
-          height: 88,
-          paddingBottom: insets.bottom,
+        { 
+          height: 48,
+          paddingBottom: 10,
+          marginTop: 10,
         }
       ]}>
       <View style={styles.border} />
-    </BlurView>
+    </View>
   );
 }
 
@@ -27,6 +22,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
+    backgroundColor: '#fff',
   },
   border: {
     position: 'absolute',
