@@ -1,13 +1,14 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, PanResponder } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Animated, PanResponder, Platform } from 'react-native';
 import { Plus, Calendar, Clock, MapPin, Trash2 } from 'lucide-react-native';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'expo-router';
 import { getPlans, deletePlan, createPlan } from '@/lib/services/plans';
 import { auth } from '@/lib/firebase';
+import { cache } from '@/lib/utils/cache';
 import type { Plan } from '@/lib/services/plans';
-import { getRestaurant } from '@/lib/services/restaurants';
-import { getEvent } from '@/lib/services/events';
-import { getLodge } from '@/lib/services/lodges';
+import { getRestaurant, Restaurant } from '@/lib/services/restaurants';
+import { getEvent, Event } from '@/lib/services/events';
+import { getLodge, Lodge } from '@/lib/services/lodges';
 import LoadingIndicator from '@/components/ui/LoadingIndicator';
 
 function SwipeableCard({ plan, onDelete, children }: { 
@@ -99,32 +100,55 @@ export default function PlanScreen() {
     }
 
     try {
+      // Clear cache to ensure fresh data
+      const cacheKey = `plans:{"userId":"${auth.currentUser.uid}"}`;
+      await cache.invalidate(cacheKey);
+      
       const response = await getPlans({ userId: auth.currentUser.uid });
       setPlans(response.items);
 
       // Fetch details for all items in all plans
       const itemDetails: Record<string, any> = {};
-      for (const plan of response.items) {
-        for (const item of plan.itinerary) {
+      
+      // Use Promise.all for parallel fetching to improve performance
+      const fetchPromises = response.items.flatMap(plan => 
+        plan.itinerary.map(async item => {
           if (!itemDetails[item.itemId]) {
-            let details;
-            switch (item.type) {
-              case 'restaurant':
-                details = await getRestaurant(item.itemId);
-                break;
-              case 'event':
-                details = await getEvent(item.itemId);
-                break;
-              case 'lodge':
-                details = await getLodge(item.itemId);
-                break;
-            }
-            if (details) {
-              itemDetails[item.itemId] = details;
+            try {
+              let details;
+              switch (item.type) {
+                case 'restaurant':
+                  details = await getRestaurant(item.itemId);
+                  break;
+                case 'event':
+                  details = await getEvent(item.itemId);
+                  break;
+                case 'lodge':
+                  details = await getLodge(item.itemId);
+                  break;
+              }
+              if (details) {
+                itemDetails[item.itemId] = details;
+                // Use type guards to safely access properties
+                if ('name' in details) {
+                  console.log(`Fetched ${item.type} details:`, details.name);
+                } else if ('title' in details) {
+                  console.log(`Fetched ${item.type} details:`, details.title);
+                }
+              } else {
+                console.error(`Failed to fetch ${item.type} with ID:`, item.itemId);
+              }
+            } catch (error) {
+              console.error(`Error fetching ${item.type} with ID ${item.itemId}:`, error);
             }
           }
-        }
-      }
+        })
+      );
+      
+      // Wait for all fetch operations to complete
+      await Promise.all(fetchPromises.filter(p => p !== undefined));
+      
+      console.log('All item details fetched:', Object.keys(itemDetails).length);
       setDetails(itemDetails);
     } catch (error) {
       console.error('Error fetching plans:', error);
@@ -155,25 +179,8 @@ export default function PlanScreen() {
       return;
     }
 
-    try {
-      const dateStr = new Date().toISOString().split('T')[0];
-      const newPlan = await createPlan({
-        userId: auth.currentUser.uid,
-        title: 'New Date Plan',
-        date: dateStr,
-        itinerary: []
-      });
-
-      if (newPlan) {
-        await fetchPlans(); // Refresh the plans list
-        router.push('/');
-      } else {
-        Alert.alert('Error', 'Failed to create plan. Please try again.');
-      }
-    } catch (error) {
-      console.error('Error creating plan:', error);
-      Alert.alert('Error', 'Failed to create plan. Please try again.');
-    }
+    // Navigate to the create plan screen instead of creating an empty plan
+    router.push('/create-plan');
   };
 
   const now = new Date();
@@ -209,7 +216,9 @@ export default function PlanScreen() {
           </TouchableOpacity>
         </View>
       ) : loading ? (
-        <LoadingIndicator text="Loading your plans..." />
+        <View style={styles.loadingContainer}>
+          <LoadingIndicator text="Loading your plans..." color="#E57373" />
+        </View>
       ) : plans.length === 0 ? (
         <View style={styles.emptyState}>
           <Text style={styles.emptyTitle}>No plans yet</Text>
@@ -317,6 +326,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+    paddingBottom: Platform.OS === 'ios' ? 88 : 68, // Add padding for tab bar
   },
   header: {
     padding: 24,
@@ -334,14 +344,20 @@ const styles = StyleSheet.create({
   createButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
-    backgroundColor: '#000',
-    paddingVertical: 8,
+    backgroundColor: '#2E7D32',
+    paddingVertical: 10,
     paddingHorizontal: 16,
-    borderRadius: 12,
+    borderRadius: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   createButtonText: {
     color: '#fff',
+    marginLeft: 8,
+    fontSize: 16,
     fontWeight: '600',
   },
   content: {
@@ -482,10 +498,17 @@ const styles = StyleSheet.create({
     marginBottom: 24,
   },
   signInButton: {
-    backgroundColor: '#000',
+    backgroundColor: '#2E7D32',
     paddingVertical: 12,
     paddingHorizontal: 24,
-    borderRadius: 12,
+    borderRadius: 8,
+    marginTop: 20,
+    alignSelf: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   signInButtonText: {
     color: '#fff',
@@ -509,5 +532,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopRightRadius: 16,
     borderBottomRightRadius: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });

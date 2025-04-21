@@ -3,9 +3,10 @@ import { useEffect, useRef } from 'react';
 
 interface LoadingIndicatorProps {
   text?: string;
+  color?: string;
 }
 
-export default function LoadingIndicator({ text = 'Loading...' }: LoadingIndicatorProps) {
+export default function LoadingIndicator({ text = 'Loading...', color }: LoadingIndicatorProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export default function LoadingIndicator({ text = 'Loading...' }: LoadingIndicat
       <Animated.View 
         style={[
           styles.spinner,
-          { transform: [{ rotate: spin }] }
+          { transform: [{ rotate: spin }], borderTopColor: color || '#000' }
         ]}
       />
       <Text style={styles.text}>{text}</Text>
@@ -53,7 +54,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     borderWidth: 4,
     borderColor: '#eee',
-    borderTopColor: '#000',
+    borderTopColor: '#000', // This will be overridden by the inline style when color prop is provided
     marginBottom: 12,
   },
   text: {

@@ -101,7 +101,7 @@ export async function createSampleUser(userId: string) {
       }
     };
 
-    await setDoc(doc(db, 'users', userId), sampleUserData);
+    await setDoc(userRef, sampleUserData);
     console.log('Sample user document created successfully');
     return sampleUserData;
   } catch (error) {

@@ -117,6 +117,30 @@ export default function AppLayout() {
           href: null,
         }}
       />
+      <Tabs.Screen
+        name="create-plan"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="choose-item"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="suggested-plan"
+        options={{
+          href: null,
+        }}
+      />
+      <Tabs.Screen
+        name="review-plan"
+        options={{
+          href: null,
+        }}
+      />
     </Tabs>
   );
 }

@@ -10,6 +10,8 @@ export interface Plan {
   date: string;
   time?: string;
   notes?: string;
+  vibe?: string;
+  budget?: string;
   itinerary: Array<{
     type: 'event' | 'restaurant' | 'lodge';
     itemId: string;
